@@ -27,8 +27,10 @@ let _ = Tests.register "insert" (fun () ->
         OUnit.assert_equal t1 (N(E,N(E,E,E,'b'),E,'a'));
         let t2 = Tst.insert t1 "abc" in
         OUnit.assert_equal t2 (N(E,N(E,N(E,E,E,'c'),E,'b'),E,'a'));
-        let t3 = Tst.insert t2 "aaa" in
-        OUnit.assert_equal t3 (N(E,N(N(E,N(E,E,E,'a'),E,'a'),N(E,E,E,'c'),E,'b'),E,'a'));
+        let t3 = Tst.insert t2 "ab" in
+        OUnit.assert_equal t3 (N(E,N(E,N(E,E,E,'c'),E,'b'),E,'a'));
+        let t4 = Tst.insert t3 "aaa" in
+        OUnit.assert_equal t4 (N(E,N(N(E,N(E,E,E,'a'),E,'a'),N(E,E,E,'c'),E,'b'),E,'a'));
         true
     in
     OUnit.assert_bool "cannot insert" (ins ())

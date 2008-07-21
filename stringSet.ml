@@ -27,7 +27,7 @@ module Tst = struct
         E
 
     let rec _insert t s i len =
-        if i = len then E
+        if i = len then t
         else match t with
             | E ->
                 N(E, _insert E s (i + 1) len, E, s.[i])
