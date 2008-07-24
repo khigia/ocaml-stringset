@@ -1,5 +1,6 @@
 TARGETS=\
-	$(patsubst test/%Test.ml,test/%Test.native,$(wildcard test/*Test.ml))
+	$(patsubst test/%Test.ml,test/%Test.native,$(wildcard test/*Test.ml)) \
+	$(patsubst %Ex.ml,%Ex.native,$(wildcard *Ex.ml))
 
 OCAMLBUILD=ocamlbuild -classic-display
 

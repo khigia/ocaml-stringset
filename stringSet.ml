@@ -1,27 +1,7 @@
-open Printf
-
 module Tst = struct
     type 'a t =
         | E (* can have a char to avoid node with 3 empty nodes *)
         | N of 'a t * 'a t * 'a t * char
-
-    let debug t =
-        let rec _debug t indent =
-            match t with
-            | E ->
-                eprintf "empty\n"
-            | N(l,m,r,c) ->
-                begin
-                eprintf "_:%c\n" c;
-                eprintf "%s" (String.make indent ' '); eprintf "l:";
-                _debug l (indent + 2);
-                eprintf "%s" (String.make indent ' '); eprintf "m:";
-                _debug m (indent + 2);
-                eprintf "%s" (String.make indent ' '); eprintf "r:";
-                _debug r (indent + 2)
-                end
-        in
-        _debug t 0
 
     let create () =
         E
