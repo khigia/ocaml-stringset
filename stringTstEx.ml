@@ -28,5 +28,10 @@ let _ =
     let t2 = Tst.insert t1 "abb" in
     let t3 = Tst.insert t2 "abd" in
     let t4 = Tst.insert t3 "zz" in
-    Tst.debug t4
-
+    Tst.debug t4;
+    eprintf "Tst.has_prefix ab: %b\n" (Tst.has_prefix t4 "ab");
+    eprintf "Tst.has_prefix abc: %b\n" (Tst.has_prefix t4 "abc");
+    eprintf "Tst.has_prefix abf: %b\n" (Tst.has_prefix t4 "abf");
+    eprintf "Tst.has_prefix a: %b\n" (Tst.has_prefix t4 "a");
+    eprintf "Tst.has_prefix h: %b\n" (Tst.has_prefix t4 "h");
+    ()
