@@ -145,3 +145,75 @@ module TstMap : Map with type key_t = string = struct
         else None
 
 end (* module TstMap *)
+
+
+(* adapted from "Purely functional data structure" [Chris Okasaki, 1998]
+bootstraped a Map of char to create a Map of string
+*)
+module TrieFtor (M : Map with type key_t = char) : Map with type key_t = string = struct
+
+    type key_t = string
+
+    type 'a t = Trie of 'a option * 'a t M.t
+
+    let create () = Trie(None, M.create ())
+
+    let rec _lookup t s i len =
+        match t with
+        | Trie(maybe, m) ->
+            if i = len then
+                maybe
+            else
+                begin
+                match M.lookup m s.[i] with
+                | Some trie ->
+                    _lookup trie s (i + 1) len
+                | None ->
+                    None
+                end
+    
+    let lookup t s =
+        _lookup t s 0 (String.length s)
+
+    let rec _bind t s i len v =
+        match t with
+        | Trie(o, m) ->
+            begin
+            if i = len then Trie(Some v, m) (* discard o *)
+            else
+                begin
+                let trie = match M.lookup m s.[i] with
+                | Some mt ->
+                    mt
+                | None ->
+                    create ()
+                in
+                let tt = _bind trie s (i + 1) len v in
+                Trie(o, M.bind m s.[i] tt)
+                end
+            end
+
+    let bind t s v =
+        _bind t s 0 (String.length s) v
+end
+
+(* Build a Trie based on a Hashtbl *)
+module HashtblTrie = TrieFtor (struct
+    (* Need to wrap Hastbl to match our Map definition *)
+
+    type key_t = char
+    type 'a t = (char, 'a) Hashtbl.t
+
+    let create () =
+        Hashtbl.create 128
+
+    let bind t s v =
+        let _ = Hashtbl.replace t s v in
+        t
+
+    let lookup t s =
+        try let v = Hashtbl.find t s in Some v
+        with Not_found -> None
+end)
+
+

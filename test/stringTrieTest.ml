@@ -10,13 +10,14 @@ Tests examples:
 
 open OUnit
 
-open StringSet.TstMap
+open StringSet.HashtblTrie
 
-module TstMapTester = MapUtil.StringMapTester (StringSet.TstMap)
+module HashtblTrieTester = MapUtil.StringMapTester (StringSet.HashtblTrie)
 
-let _ = Tests.register "create and bind" TstMapTester.test_bind
+let _ = Tests.register "create and bind" HashtblTrieTester.test_bind
 
-let _ = Tests.register "bind-lookup" TstMapTester.test_lookup
+let _ = Tests.register "bind-lookup" HashtblTrieTester.test_lookup
 
-let _ = Tests.run "TstMap test suite"
+let _ = Tests.run "HashtblTrie test suite"
+
 

@@ -11,3 +11,9 @@ build:
 .PHONY: clean
 clean:
 	$(OCAMLBUILD) -clean
+
+.PHONY: utest
+utest:
+	@for I in `ls *Test.native` ; do \
+		./$$I ; \
+	done
