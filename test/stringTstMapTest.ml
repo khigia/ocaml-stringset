@@ -8,10 +8,6 @@ Tests examples:
     Tests.run "Name of the suite"
 *)
 
-open OUnit
-
-open StringSet.TstMap
-
 module TstMapTester = MapUtil.StringMapTester (StringSet.TstMap)
 
 let _ = Tests.register "create and bind" TstMapTester.test_bind

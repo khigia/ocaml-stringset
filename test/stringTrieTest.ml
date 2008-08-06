@@ -8,10 +8,6 @@ Tests examples:
     Tests.run "Name of the suite"
 *)
 
-open OUnit
-
-open StringSet.HashtblTrie
-
 module HashtblTrieTester = MapUtil.StringMapTester (StringSet.HashtblTrie)
 
 let _ = Tests.register "create and bind" HashtblTrieTester.test_bind

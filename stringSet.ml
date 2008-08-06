@@ -1,8 +1,26 @@
-(*
-TODO
- - replace Empty node by Leaf node which contains a char (then cannot have empty Tst)
- - collapse the 1-branch paths (use string or list?)
+(*TODO
+ - TST: collapse the 1-branch paths (use string or list?)
+
+ - sort
+ - range search
+ - longest_prefix
+ - wildcard match
+ - neighrest neighbor search (k difference)
+
+ - multi set (a set with list as value)
+ 
+ - patricia trie/tree (crit bit tree)
+
+ - ex: T9
 *)
+
+(* Notes
+ - most of the ops not tail recursive (limit the length of the possible key)
+*)
+
+open StringUtil (* for CTst *)
+
+
 module Tst = struct
     type 'a t =
         | E
@@ -49,6 +67,86 @@ module Tst = struct
 end (* module Tst *)
 
 
+module CTst = struct (* collapsed TST *)
+    type 'a t =
+        | E
+        | N of 'a t * 'a t * 'a t * string
+        (* semantic: N(l,m,r,"abc") = N(E,N(E,N(E,E,E,'c'),E,'b'),e,'a') *)
+
+    let create () =
+        E
+
+    let rec _insert t s i len =
+        if i = len then t
+        else match t with
+            | E ->
+                let v = if i = 0 then s else String.sub s i (len - i) in
+                N(E, E, E, v)
+            | N(left, mid, right, c) as n ->
+                let clen = String.length c in
+                match string_cmp_i s i len c 0 clen with
+                | Eq ->
+                    n
+                | Prefix (* s+i is prefix of c *) ->
+                    n (* do not even need to mark the end of the key *)
+                | Contain ->
+                    N(left, _insert mid s (i + clen) len, right, c)
+                | Inf p (* p < len *) ->
+                    (* s and c may share a common prefix *)
+                    if p = i
+                    then (* empty prefix, s < c *)
+                        N(_insert left s i len, mid, right, c)
+                    else
+                        let prefix = String.sub s i (p - i) in
+                        let rest = String.sub c (p - i) (clen - p - i) in
+                        let sub = _insert (N(left, mid, right, rest)) s (i + p) len in
+                        N(E, sub, E, prefix)
+                | Sup p ->
+                    (* s and c may share a common prefix *)
+                    if p = i
+                    then (* empty prefix, s > c *)
+                        N(left, mid, _insert right s i len, c)
+                    else
+                        let prefix = String.sub s i (p - i) in
+                        let rest = String.sub c (p - i) (clen - p - i) in
+                        let sub = _insert (N(left, mid, right, rest)) s (i + p) len in
+                        N(E, sub, E, prefix)
+
+    let insert t s =
+        let len = String.length s in
+        _insert t s 0 len
+
+    let rec _has_prefix t s i len =
+        if i = len then true
+        else match t with
+            | E ->
+                false
+            | N(l,m,r,c) ->
+                let clen = String.length c in
+                match string_cmp_i s i len c 0 clen with
+                | Eq ->
+                    true
+                | Prefix (* s+i is prefix of c *) ->
+                    true
+                | Contain ->
+                    _has_prefix m s (i + clen) len
+                | Inf p (* p < len *) ->
+                    if p = i then
+                        _has_prefix l s i len
+                    else
+                        false
+                | Sup p ->
+                    if p = i then
+                        _has_prefix r s i len
+                    else
+                        false
+
+    let has_prefix t s =
+        _has_prefix t s 0 (String.length s)
+
+end (* module CTst *)
+
+
 module type Map = sig
     (* dict or map or finiteMap *)
 
@@ -65,11 +163,6 @@ end (* module type Map *)
 
 
 module TstMap : Map with type key_t = string = struct
-    (*
-    TODO
-     - replace Empty node by Leaf node which contains a char (then cannot have empty Tst)
-     - collapse the 1-branch paths (use string or list?)
-    *)
 
     type key_t = string
 
