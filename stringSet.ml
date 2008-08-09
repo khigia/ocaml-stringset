@@ -149,10 +149,12 @@ end (* module CTst *)
 module Radix = struct
     (* not sure about the algo ... maybe a mix of patricia, radix, critbit *)
 
-    type t = (* Leaf, Trunk (for prefix inputs), Branch *)
+    type _n_t = (* node: Leaf, Trunk (for prefix inputs), Branch *)
         | L of string
-        | T of t * string
-        | B of t * t * int * int (* left, right, critical char index, critical bit index *)
+        | T of _n_t * string
+        | B of _n_t * _n_t * int * int (* left, right, critical char index, critical bit index *)
+
+    type t = _n_t option
 
     let create () =
         None
@@ -164,7 +166,7 @@ module Radix = struct
         | T(_, k) ->
             k
         | B(l, r, _, _) ->
-            _first l (* favor left??? *)
+            _first l (* favor left??? ... could take the shortest path if B node embed the size of tree *)
         
     let rec _insert t s sl =
         match t with
@@ -180,11 +182,9 @@ module Radix = struct
                 T(L s, k)
             | Inf p ->
                 let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                (*BUG critbit test bit from r to l ... inf is from left to right! *)
                 B(L s, t, p, b)
             | Sup p ->
                 let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                (*BUG critbit test bit from r to l ... inf is from left to right! *)
                 B(t, L s, p, b)
             end
         | T(m, k) ->
@@ -201,7 +201,7 @@ module Radix = struct
                     B(l, _insert r s sl, i, b)
             else
                 begin
-                let k = _first l in (* get the first string in tree (at least size i) *) (* favor left??? *)
+                let k = _first l in (* get the first string in tree (at least size i) *)
                 match string_cmp_i s 0 sl k 0 sl with
                 | Eq | Prefix ->
                     T(t, s)
@@ -222,7 +222,34 @@ module Radix = struct
             let sl = String.length s in
             Some(_insert t s sl)
 
+    let rec _lookup t s sl =
+        match t with
+        | L(k) ->
+            if s = k then Some k else None
+        | T(m, k) ->
+            let kl = String.length k in
+            if kl < sl then
+                _lookup m s sl
+            else if kl > sl then
+                None
+            else (* kl == sl *)
+                (if s = k then Some k else None)
+        | B(l, r, i, b) ->
+            if sl > i then
+                let dir = if ((int_of_char s.[i]) land (1 lsl b)) = 0 then l else r in
+                _lookup dir s sl
+            else
+                None
+
+    let lookup radix s =
+        match radix with
+        | None -> None
+        | Some t ->
+            let sl = String.length s in
+            _lookup t s sl
+
 end (* module Radix *)
+
 
 module type Map = sig
     (* dict or map or finiteMap *)

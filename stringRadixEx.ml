@@ -31,18 +31,36 @@ end (* module radix *)
 
 
 let _ =
-    let _ = List.fold_left (fun t s ->
+    let d = List.fold_left (fun t s ->
         eprintf "Inserting: %s\n" s;
         let r = Radix.insert t s in
         Radix.debug r;
         eprintf "\n";
         r
     ) (Radix.create ()) [
-      "aaabc" ;
-      "aaabb" ;
-      "aaabddd" ;
-      "azz" ;
-      "aaab" ;
-      "a" ;
+        "aaabc" ;
+        "aaabb" ;
+        "aaabddd" ;
+        "azz" ;
+        "aaab" ;
+        "a" ;
     ] in
-    ()
+    List.iter (fun k ->
+        eprintf "Lookup %s: %s\n" k (match Radix.lookup d k with
+        | None -> "None"
+        | Some v -> sprintf "Some %s" v
+        ))
+        [
+            "a";
+            "aaab";
+            "aaabc" ;
+            "aaabb" ;
+            "aaabddd" ;
+            "azz" ;
+            "w";
+            "abab";
+            "aaabcd" ;
+            "aaabd" ;
+            "aaabddc" ;
+            "azf" ;
+        ]
