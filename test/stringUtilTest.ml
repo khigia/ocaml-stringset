@@ -51,6 +51,21 @@ let _ = Tests.register "string_cmp_i sup" (fun () ->
     ()
 )
 
+let _ = Tests.register "critbit" (fun () ->
+    let _critbit_ok c1 c2 expected =
+        let b = critbit c1 c2 in
+        OUnit.assert_bool (Printf.sprintf "critbit %d %d: expect %d" (int_of_char c1) (int_of_char c2) expected) (b = expected)
+    in
+    _critbit_ok (char_of_int 0) (char_of_int 1) 0;
+    _critbit_ok (char_of_int 0) (char_of_int 2) 1;
+    _critbit_ok (char_of_int 0) (char_of_int 4) 2;
+    _critbit_ok (char_of_int 2) (char_of_int 4) 2;
+    _critbit_ok (char_of_int 2) (char_of_int 1) 1;
+    OUnit.assert_raises Not_found (fun () -> critbit (char_of_int 0) (char_of_int 0));
+    OUnit.assert_raises Not_found (fun () -> critbit 'a' 'a');
+    ()
+)
+
 let _ = Tests.run "StringUtil test suite"
 
 

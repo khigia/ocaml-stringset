@@ -1,5 +1,4 @@
 (*TODO
- - TST: collapse the 1-branch paths (use string or list?)
 
  - sort
  - range search
@@ -146,6 +145,84 @@ module CTst = struct (* collapsed TST *)
 
 end (* module CTst *)
 
+
+module Radix = struct
+    (* not sure about the algo ... maybe a mix of patricia, radix, critbit *)
+
+    type t = (* Leaf, Trunk (for prefix inputs), Branch *)
+        | L of string
+        | T of t * string
+        | B of t * t * int * int (* left, right, critical char index, critical bit index *)
+
+    let create () =
+        None
+
+    let rec _first t =
+        match t with
+        | L(k) ->
+            k
+        | T(_, k) ->
+            k
+        | B(l, r, _, _) ->
+            _first l (* favor left??? *)
+        
+    let rec _insert t s sl =
+        match t with
+        | L(k) ->
+            begin
+            let kl = String.length k in
+            match string_cmp_i s 0 sl k 0 kl with
+            | Eq ->
+                t
+            | Prefix ->
+                T(t, s)
+            | Contain ->
+                T(L s, k)
+            | Inf p ->
+                let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
+                (*BUG critbit test bit from r to l ... inf is from left to right! *)
+                B(L s, t, p, b)
+            | Sup p ->
+                let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
+                (*BUG critbit test bit from r to l ... inf is from left to right! *)
+                B(t, L s, p, b)
+            end
+        | T(m, k) ->
+            let kl = String.length k in
+            if kl = sl then
+                t
+            else
+                _insert m s sl
+        | B(l, r, i, b) ->
+            if sl > i then
+                if ((int_of_char s.[i]) land (1 lsl b)) = 0 then
+                    B(_insert l s sl, r, i, b)
+                else
+                    B(l, _insert r s sl, i, b)
+            else
+                begin
+                let k = _first l in (* get the first string in tree (at least size i) *) (* favor left??? *)
+                match string_cmp_i s 0 sl k 0 sl with
+                | Eq | Prefix ->
+                    T(t, s)
+                | Contain ->
+                    failwith "unexpected data structure state (for real ... this is a bug!)"
+                | Inf p ->
+                    let bn = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
+                    B(L s, t, p, bn)
+                | Sup p ->
+                    let bn = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
+                    B(t, L s, p, bn)
+                end
+
+    let insert radix s =
+        match radix with
+        | None -> Some(L s)
+        | Some t ->
+            let sl = String.length s in
+            Some(_insert t s sl)
+
+end (* module Radix *)
 
 module type Map = sig
     (* dict or map or finiteMap *)

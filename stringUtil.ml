@@ -28,4 +28,15 @@ let rec string_cmp_i s1 p1 l1 s2 p2 l2 =
                 Sup p1
         end
 
+let rec _critbit p c1 c2 =
+    if (c1 land 128) != (c2 land 128) then
+        p
+    else
+        _critbit (p - 1) (c1 lsl 1) (c2 lsl 1)
 
+let critbit c1 c2 =
+    if c1 = c2 then
+        raise Not_found
+    else
+        (* TODO a XOR and find first bit should be more efficient *)
+        _critbit 7 (int_of_char c1) (int_of_char c2)
