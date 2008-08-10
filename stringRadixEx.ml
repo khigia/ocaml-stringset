@@ -1,15 +1,15 @@
 open Printf
 
-module Radix = struct
+module SRadix = struct
     include StringSet.Radix
 
     let debug t =
         let rec _debug t indent =
             match t with
-            | L(k) ->
-                eprintf "L:%s\n" k
-            | T(n, k) ->
-                eprintf "T:%s\n" k;
+            | L(k, v) ->
+                eprintf "L:%s:%s\n" k v
+            | T(n, k, v) ->
+                eprintf "T:%s:%s\n" k v;
                 eprintf "%s" (String.make indent ' ');
                 _debug n indent
             | B(l, r, i, b) ->
@@ -31,22 +31,22 @@ end (* module radix *)
 
 
 let _ =
-    let d = List.fold_left (fun t s ->
-        eprintf "Inserting: %s\n" s;
-        let r = Radix.insert t s in
-        Radix.debug r;
+    let d = List.fold_left (fun t (s, v) ->
+        eprintf "Inserting: %s:%s\n" s v;
+        let r = SRadix.bind t s v in
+        SRadix.debug r;
         eprintf "\n";
         r
-    ) (Radix.create ()) [
-        "aaabc" ;
-        "aaabb" ;
-        "aaabddd" ;
-        "azz" ;
-        "aaab" ;
-        "a" ;
+    ) (SRadix.create ()) [
+        ("aaabc", "1") ;
+        ("aaabb", "2") ;
+        ("aaabddd", "3") ;
+        ("azz", "4") ;
+        ("aaab", "5") ;
+        ("a", "6") ;
     ] in
     List.iter (fun k ->
-        eprintf "Lookup %s: %s\n" k (match Radix.lookup d k with
+        eprintf "Lookup %s: %s\n" k (match SRadix.lookup d k with
         | None -> "None"
         | Some v -> sprintf "Some %s" v
         ))

@@ -14,10 +14,10 @@
 *)
 
 (* Notes
- - most of the ops not tail recursive (limit the length of the possible key)
+ - most of the ops not tail recursive (that could be done through continuations if needed)
 *)
 
-open StringUtil (* for CTst *)
+open StringUtil
 
 
 module Tst = struct
@@ -149,91 +149,91 @@ end (* module CTst *)
 module Radix = struct
     (* not sure about the algo ... maybe a mix of patricia, radix, critbit *)
 
-    type _n_t = (* node: Leaf, Trunk (for prefix inputs), Branch *)
-        | L of string
-        | T of _n_t * string
-        | B of _n_t * _n_t * int * int (* left, right, critical char index, critical bit index *)
+    type 'a _n_t = (* node: Leaf, Trunk (for prefix inputs), Branch *)
+        | L of string * 'a
+        | T of 'a _n_t * string * 'a
+        | B of 'a _n_t * 'a _n_t * int * int (* left, right, critical char index, critical bit index (this is bit index in char ... from right to left) *)
 
-    type t = _n_t option
+    type 'a t = 'a _n_t option
 
     let create () =
         None
 
-    let rec _first t =
+    let rec _first_key t =
         match t with
-        | L(k) ->
+        | L(k, _) ->
             k
-        | T(_, k) ->
+        | T(_, k, _) ->
             k
         | B(l, r, _, _) ->
-            _first l (* favor left??? ... could take the shortest path if B node embed the size of tree *)
+            _first_key l (* favor left??? ... could take the shortest path if B node embed the size of tree *)
         
-    let rec _insert t s sl =
+    let rec _bind t s sl v =
         match t with
-        | L(k) ->
+        | L(k, d) ->
             begin
             let kl = String.length k in
             match string_cmp_i s 0 sl k 0 kl with
             | Eq ->
-                t
+                L(k, v) (* replace *)
             | Prefix ->
-                T(t, s)
+                T(t, s, v)
             | Contain ->
-                T(L s, k)
+                T(L(s, v), k, d)
             | Inf p ->
                 let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                B(L s, t, p, b)
+                B(L(s, v), t, p, b)
             | Sup p ->
                 let b = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                B(t, L s, p, b)
+                B(t, L(s, v), p, b)
             end
-        | T(m, k) ->
+        | T(m, k, v) ->
             let kl = String.length k in
             if kl = sl then
-                t
+                T(m, k, v) (* replace *)
             else
-                _insert m s sl
+                _bind m s sl v
         | B(l, r, i, b) ->
             if sl > i then
                 if ((int_of_char s.[i]) land (1 lsl b)) = 0 then
-                    B(_insert l s sl, r, i, b)
+                    B(_bind l s sl v, r, i, b)
                 else
-                    B(l, _insert r s sl, i, b)
+                    B(l, _bind r s sl v, i, b)
             else
                 begin
-                let k = _first l in (* get the first string in tree (at least size i) *)
+                let k = _first_key l in (* get the first string in tree (at least size i) *)
                 match string_cmp_i s 0 sl k 0 sl with
                 | Eq | Prefix ->
-                    T(t, s)
+                    T(t, s, v)
                 | Contain ->
                     failwith "unexpected data structure state (for real ... this is a bug!)"
                 | Inf p ->
                     let bn = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                    B(L s, t, p, bn)
+                    B(L(s, v), t, p, bn)
                 | Sup p ->
                     let bn = critbit s.[p] k.[p] in (* can raise but this would be unexpected here *)
-                    B(t, L s, p, bn)
+                    B(t, L(s, v), p, bn)
                 end
 
-    let insert radix s =
+    let bind radix s v =
         match radix with
-        | None -> Some(L s)
+        | None -> Some(L(s, v))
         | Some t ->
             let sl = String.length s in
-            Some(_insert t s sl)
+            Some(_bind t s sl v)
 
     let rec _lookup t s sl =
         match t with
-        | L(k) ->
-            if s = k then Some k else None
-        | T(m, k) ->
+        | L(k, v) ->
+            if s = k then Some v else None
+        | T(m, k, v) ->
             let kl = String.length k in
             if kl < sl then
                 _lookup m s sl
             else if kl > sl then
                 None
             else (* kl == sl *)
-                (if s = k then Some k else None)
+                (if s = k then Some v else None)
         | B(l, r, i, b) ->
             if sl > i then
                 let dir = if ((int_of_char s.[i]) land (1 lsl b)) = 0 then l else r in
