@@ -19,6 +19,12 @@ module MakeArray (T:sig type t end) = struct
   let get = Array.get
 end
 
+module String = struct
+  type t = string
+  type v = char
+  let length = String.length
+  let get = String.get
+end
 
 
 module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
@@ -71,7 +77,6 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
       then
         _read m s1 s2 (i-1) j ('+'::r)
       else
-        let mi, mj = i + 1, j + 1 in
         let c1 = S.get s1 (i-1) in
         let c2 = S.get s2 (j-1) in
         let v1 = m.(i).(j-1) +. C.insert c2 in
