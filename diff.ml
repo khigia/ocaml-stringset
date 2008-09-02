@@ -9,7 +9,7 @@ module type Indexable = sig
   type t
   type v
   val length: t -> int
-  val get: t -> int -> v (* may raise Invalid_argument *)
+  val get: t -> int -> v
 end
 
 module MakeArray (T:sig type t end) = struct
@@ -30,6 +30,12 @@ end
 module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
 
   type t = Edit of S.t * S.t * float array array
+
+  type edition =
+    | Insert of int
+    | Delete of int
+    | Ident of int
+    | Replace of int * int
 
   let min3 a b c =
     min a (min b c)
@@ -71,31 +77,41 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
       then
         r
       else
-        _read m s1 s2 i (j-1) ('-'::r)
+        _read m s1 s2 i (j-1) ((Delete (j-1))::r)
     else
       if j = 0
       then
-        _read m s1 s2 (i-1) j ('+'::r)
+        _read m s1 s2 (i-1) j ((Insert (i-1))::r)
       else
         let c1 = S.get s1 (i-1) in
         let c2 = S.get s2 (j-1) in
         let v1 = m.(i).(j-1) +. C.insert c2 in
         if m.(i).(j) = v1
         then
-          _read m s1 s2 i (j-1) ('-'::r)
+          _read m s1 s2 i (j-1) ((Delete (j-1))::r)
         else
           let v2 = m.(i-1).(j) +. C.delete c1 in
           if m.(i).(j) = v2
           then
-            _read m s1 s2 (i-1) j ('+'::r)
+            _read m s1 s2 (i-1) j ((Insert (i-1))::r)
           else
             if c1 = c2
-            then _read m s1 s2 (i-1) (j-1) ('='::r)
-            else _read m s1 s2 (i-1) (j-1) ('_'::r)
+            then _read m s1 s2 (i-1) (j-1) ((Ident (i-1))::r)
+            else _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
 
   let read = function Edit(s1, s2, m) ->
     let l1 = S.length s1 in
     let l2 = S.length s2 in
     _read m s1 s2 l1 l2 []
 
+  let eprint_edition m d tostr =
+    match m with Edit(a1, a2, _) ->
+      List.iter (fun v -> match v with
+        | Insert i -> Printf.eprintf "+ %s\n" (tostr a1 i)
+        | Delete i -> Printf.eprintf "- %s\n" (tostr a2 i)
+        | Ident i -> Printf.eprintf "  %s\n" (tostr a1 i)
+        | Replace (i, j) ->
+          Printf.eprintf "-+%s\n" (tostr a1 i);
+          Printf.eprintf "+-%s\n" (tostr a2 j)
+      ) d
 end
