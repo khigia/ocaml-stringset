@@ -29,13 +29,31 @@ end
 
 module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
 
-  type t = Edit of S.t * S.t * float array array
+  module Edition = struct
+    type action =
+      | Insert of int
+      | Delete of int
+      | Replace of int * int
+    
+    type t = Edit of S.t * S.t * action list
+    
+    let print ch d tostr =
+      match d with Edit(a1, a2, d) ->
+        List.iter (fun v -> match v with
+          | Insert i -> Printf.fprintf ch "+ %s\n" (tostr (S.get a1 i))
+          | Delete i -> Printf.fprintf ch "- %s\n" (tostr (S.get a2 i))
+          | Replace (i, j) ->
+            let c1 = S.get a1 i in
+            let c2 = S.get a2 j in
+            if c1 = c2
+            then Printf.fprintf ch "  %s\n" (tostr c1)
+            else Printf.fprintf ch "-+%s\n+-%s\n" (tostr c2) (tostr c2)
+        ) d
+  end
 
-  type edition =
-    | Insert of int
-    | Delete of int
-    | Ident of int
-    | Replace of int * int
+  open Edition
+
+  type t = Mat of S.t * S.t * float array array
 
   let min3 a b c =
     min a (min b c)
@@ -48,19 +66,17 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     for j = 0 to l2 do m.(0).(j) <- float j done;
     for i = 0 to l1 - 1 do
       for j = 0 to l2 - 1 do
-        let mi = i + 1 in
-        let mj = j + 1 in
-        let c1 = S.get s1 i in
-        let c2 = S.get s2 j in
+        let mi, mj = i + 1, j + 1 in
+        let c1, c2 = S.get s1 i, S.get s2 j in
         let v1 = m.(mi).(mj-1) +. C.insert c2 in
         let v2 = m.(mi-1).(mj) +. C.delete c1 in
         let v3 = m.(mi-1).(mj-1) +. C.replace c1 c2 in
         m.(mi).(mj) <- min3 v1 v2 v3
       done
     done;
-    Edit(s1, s2, m)
+    Mat(s1, s2, m)
 
-  let eprint = function Edit(a1, a2, m) ->
+  let eprint = function Mat(a1, a2, m) ->
     let l1 = S.length a1 in
     let l2 = S.length a2 in
     for j = 0 to l2 do
@@ -71,47 +87,36 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     done
 
   let rec _read m s1 s2 i j r =
-    if i = 0
-    then
-      if j = 0
+    match i, j with
+    | 0, 0 ->
+      Edit(s1, s2, r)
+    | 0, _ ->
+      _read m s1 s2 i (j-1) ((Delete (j-1))::r)
+    | _, 0 ->
+      _read m s1 s2 (i-1) j ((Insert (i-1))::r)
+    | _, _ ->
+      let c1, c2 = S.get s1 (i-1), S.get s2 (j-1) in
+      (* hardcoded priority: insert, delete, replace *)
+      let v1 = m.(i).(j-1) +. C.insert c2 in
+      if m.(i).(j) = v1
       then
-        r
-      else
         _read m s1 s2 i (j-1) ((Delete (j-1))::r)
-    else
-      if j = 0
-      then
-        _read m s1 s2 (i-1) j ((Insert (i-1))::r)
       else
-        let c1 = S.get s1 (i-1) in
-        let c2 = S.get s2 (j-1) in
-        let v1 = m.(i).(j-1) +. C.insert c2 in
-        if m.(i).(j) = v1
+        let v2 = m.(i-1).(j) +. C.delete c1 in
+        if m.(i).(j) = v2
         then
-          _read m s1 s2 i (j-1) ((Delete (j-1))::r)
+          _read m s1 s2 (i-1) j ((Insert (i-1))::r)
         else
-          let v2 = m.(i-1).(j) +. C.delete c1 in
-          if m.(i).(j) = v2
-          then
-            _read m s1 s2 (i-1) j ((Insert (i-1))::r)
-          else
-            if c1 = c2
-            then _read m s1 s2 (i-1) (j-1) ((Ident (i-1))::r)
-            else _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
+          _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
 
-  let read = function Edit(s1, s2, m) ->
+  let read = function Mat(s1, s2, m) ->
     let l1 = S.length s1 in
     let l2 = S.length s2 in
     _read m s1 s2 l1 l2 []
 
-  let eprint_edition m d tostr =
-    match m with Edit(a1, a2, _) ->
-      List.iter (fun v -> match v with
-        | Insert i -> Printf.eprintf "+ %s\n" (tostr a1 i)
-        | Delete i -> Printf.eprintf "- %s\n" (tostr a2 i)
-        | Ident i -> Printf.eprintf "  %s\n" (tostr a1 i)
-        | Replace (i, j) ->
-          Printf.eprintf "-+%s\n" (tostr a1 i);
-          Printf.eprintf "+-%s\n" (tostr a2 j)
-      ) d
+  let align x y =
+    let e = make x y in
+    eprint e;
+    read e
+    
 end
