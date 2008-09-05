@@ -43,19 +43,6 @@ let test_stra =
   let d = M.align x y in
   M.Edition.print stderr d (fun s -> s)
 
-(*
-Diff files:
-- for line mode:
-  - may apply transfo on line: s/\s+/ /g
-  - using stringset, tag each line to an int identifier; align those int
-  - display result might want to perform align of the line for replace edition
-- word mode
-- for char mode, we may still want to perform some transfo (ignore newline ...)
-- for byte mode, no transfo?
-- skip head while ident (possible to skip common tail?)
-- for big file, may need to create non-optimal alignment from succession of local align (every 100 line or 100 bytes)
-*)
-
 let _ =
   test_arr ;
   test_str ;
