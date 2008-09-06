@@ -34,6 +34,7 @@ type lines = Lines of string * string array
 let rec read_lines ch acc =
   try
     let line = input_line ch in
+    (* TODO line transfo happen now ... normalize space etc *)
     read_lines ch (line::acc)
   with End_of_file -> acc
 
@@ -55,7 +56,9 @@ let rec _do_diff_line s0 files =
   | _ -> ()
 
 let do_diff_line fn0 files =
-  (* line to int using a radix/CTST map ... save memory and cpu! *)
+  (* TODO line to int using a radix/CTST map ... save memory and cpu!
+  let dict = StringSet.Radix.create () in
+  *)
   let s0 = file_lines_to_sequence fn0 in
   _do_diff_line s0 files
 
