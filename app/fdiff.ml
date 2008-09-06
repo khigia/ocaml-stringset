@@ -13,6 +13,27 @@ Diff files:
 
 let (|>) x f = f x
 
+module Tagger = struct
+  module Dict = StringSet.Radix
+
+  type 'a t = {
+    cur: int;
+    dict: 'a Dict.t;
+  }
+
+  let create () = {
+    cur = 0;
+    dict = Dict.create ();
+  }
+
+  let get_tag st key =
+    match Dict.lookup st.dict key with
+    | Some v -> v, st
+    | None ->
+      let d = Dict.bind st.dict key st.cur in
+      st.cur, {cur = st.cur + 1; dict = d; }
+end
+
 module MakeCosts (T:sig type t end) = struct
   type v = T.t
   let insert v = 1.0
@@ -29,38 +50,37 @@ module StringCosts = MakeCosts (struct type t = string end)
 module StringDiff = Diff.Edit (StringArray) (StringCosts)
 
 
-type lines = Lines of string * string array
+type lines = Lines of string * int array
 
-let rec read_lines ch acc =
+let rec read_lines tagger ch acc =
   try
     let line = input_line ch in
     (* TODO line transfo happen now ... normalize space etc *)
-    read_lines ch (line::acc)
-  with End_of_file -> acc
+    let tag, tagger = Tagger.get_tag tagger line in
+    read_lines tagger ch (tag::acc)
+  with End_of_file -> tagger, List.rev acc
 
-let file_lines_to_sequence fn =
+let file_lines_to_sequence tagger fn =
   let ch = open_in fn in
-  let lines = read_lines ch [] in
-  Lines(fn, Array.of_list (List.rev lines))
+  let tagger, lines = read_lines tagger ch [] in
+  tagger, Lines(fn, Array.of_list lines)
 
-let rec _do_diff_line s0 files =
+let rec _do_diff_line tagger s0 files =
   match files with
   | fn::rest ->
-    let s = file_lines_to_sequence fn in
+    let _, s = file_lines_to_sequence tagger fn in
     let Lines(fn0, a0) = s0 in
     let Lines(fn, a) = s in
     Printf.eprintf "Compare %s and %s\n" fn0 fn;
-    let d = StringDiff.align a0 a in
-    StringDiff.Edition.print stderr d (fun s -> s);
-    _do_diff_line s0 rest
+    let d = IntDiff.align a0 a in
+    IntDiff.Edition.print stderr d (fun s -> string_of_int s);
+    _do_diff_line tagger s0 rest
   | _ -> ()
 
 let do_diff_line fn0 files =
-  (* TODO line to int using a radix/CTST map ... save memory and cpu!
-  let dict = StringSet.Radix.create () in
-  *)
-  let s0 = file_lines_to_sequence fn0 in
-  _do_diff_line s0 files
+  let tagger = Tagger.create () in
+  let tagger, s0 = file_lines_to_sequence tagger fn0 in
+  _do_diff_line tagger s0 files
 
 
 
