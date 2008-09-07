@@ -62,22 +62,22 @@ module LineDiff = struct
       | [] -> ()
       | hd::tl ->
         match hd with
-        | Ident i ->
-          let l1, p1' = read_line_n ch1 p1 i in
-          Printf.fprintf ch "%5d= %s\n" i l1;
-          _fprint ch ch1 p1' ch2 p2 tl
+        | Ident (i, j) ->
+          let l2, p2' = read_line_n ch2 p2 j in
+          Printf.fprintf ch "j %5d= %s\n" j l2;
+          _fprint ch ch1 p1 ch2 p2' tl
         | Insert i ->
           let l1, p1' = read_line_n ch1 p1 i in
-          Printf.fprintf ch "%5d+ %s\n" i l1;
+          Printf.fprintf ch "i %5d+ %s\n" i l1;
           _fprint ch ch1 p1' ch2 p2 tl
         | Delete j ->
           let l2, p2' = read_line_n ch2 p2 j in
-          Printf.fprintf ch "%5d- %s\n" j l2;
+          Printf.fprintf ch "j %5d- %s\n" j l2;
           _fprint ch ch1 p1 ch2 p2' tl
         | Replace (i, j) ->
           let l1, p1' = read_line_n ch1 p1 i in
           let l2, p2' = read_line_n ch2 p2 j in
-          Printf.fprintf ch "%5d-*%s\n%5d+*%s\n" i l1 j l2;
+          Printf.fprintf ch "i %5d-*%s\nj %5d+*%s\n" i l1 j l2;
           _fprint ch ch1 p1' ch2 p2' tl
   
     let fprint ch fn1 fn2 edition =

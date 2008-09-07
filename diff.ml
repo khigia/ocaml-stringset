@@ -33,7 +33,7 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     type action =
       | Insert of int
       | Delete of int
-      | Ident of int
+      | Ident of int * int
       | Replace of int * int
     
     type t = Edit of S.t * S.t * action list
@@ -43,7 +43,7 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
         List.iter (fun v -> match v with
           | Insert i -> Printf.fprintf ch "+ %s\n" (tostr (S.get a1 i))
           | Delete i -> Printf.fprintf ch "- %s\n" (tostr (S.get a2 i))
-          | Ident i -> Printf.fprintf ch "  %s\n" (tostr (S.get a1 i))
+          | Ident (i, _) -> Printf.fprintf ch "  %s\n" (tostr (S.get a1 i))
           | Replace (i, j) ->
             let c1 = S.get a1 i in
             let c2 = S.get a2 j in
@@ -104,8 +104,10 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
         then
           _read m s1 s2 (i-1) j ((E.Insert (i-1))::r)
         else
+          (* the diff between Ident and Replace may not need to be therer but this help
+          for further processing when the input c1 or c2 may be discarded. *)
           if c1 = c2
-          then _read m s1 s2 (i-1) (j-1) ((E.Ident (i-1))::r)
+          then _read m s1 s2 (i-1) (j-1) ((E.Ident (i-1, j-1))::r)
           else _read m s1 s2 (i-1) (j-1) ((E.Replace (i-1, j-1))::r)
 
   let read = function Mat(s1, s2, m) ->
