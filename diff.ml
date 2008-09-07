@@ -50,8 +50,7 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
             Printf.fprintf ch "-+%s\n+-%s\n" (tostr c1) (tostr c2)
         ) d
   end
-
-  open Edition
+  module E = Edition
 
   type t = Mat of S.t * S.t * float array array
 
@@ -59,8 +58,7 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     min a (min b c)
 
   let make s1 s2 =
-    let l1 = S.length s1 in
-    let l2 = S.length s2 in
+    let l1, l2 = S.length s1, S.length s2 in
     let m = Array.make_matrix (l1 + 1) (l2 + 1) 0.0 in
     for i = 0 to l1 do m.(i).(0) <- float i done;
     for j = 0 to l2 do m.(0).(j) <- float j done;
@@ -76,9 +74,8 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     done;
     Mat(s1, s2, m)
 
-  let eprint = function Mat(a1, a2, m) ->
-    let l1 = S.length a1 in
-    let l2 = S.length a2 in
+  let eprint = function Mat(s1, s2, m) ->
+    let l1, l2 = S.length s1, S.length s2 in
     for j = 0 to l2 do
       for i = 0 to l1 do
         Printf.eprintf " %f" m.(i).(j)
@@ -89,36 +86,35 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
   let rec _read m s1 s2 i j r =
     match i, j with
     | 0, 0 ->
-      Edit(s1, s2, r)
+      E.Edit(s1, s2, r)
     | 0, _ ->
-      _read m s1 s2 i (j-1) ((Delete (j-1))::r)
+      _read m s1 s2 i (j-1) ((E.Delete (j-1))::r)
     | _, 0 ->
-      _read m s1 s2 (i-1) j ((Insert (i-1))::r)
+      _read m s1 s2 (i-1) j ((E.Insert (i-1))::r)
     | _, _ ->
       let c1, c2 = S.get s1 (i-1), S.get s2 (j-1) in
       (* hardcoded priority: insert, delete, replace *)
       let v1 = m.(i).(j-1) +. C.insert c2 in
       if m.(i).(j) = v1
       then
-        _read m s1 s2 i (j-1) ((Delete (j-1))::r)
+        _read m s1 s2 i (j-1) ((E.Delete (j-1))::r)
       else
         let v2 = m.(i-1).(j) +. C.delete c1 in
         if m.(i).(j) = v2
         then
-          _read m s1 s2 (i-1) j ((Insert (i-1))::r)
+          _read m s1 s2 (i-1) j ((E.Insert (i-1))::r)
         else
           if c1 = c2
-          then _read m s1 s2 (i-1) (j-1) ((Ident (i-1))::r)
-          else _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
+          then _read m s1 s2 (i-1) (j-1) ((E.Ident (i-1))::r)
+          else _read m s1 s2 (i-1) (j-1) ((E.Replace (i-1, j-1))::r)
 
   let read = function Mat(s1, s2, m) ->
-    let l1 = S.length s1 in
-    let l2 = S.length s2 in
+    let l1, l2 = S.length s1, S.length s2 in
     _read m s1 s2 l1 l2 []
 
   let align x y =
     let e = make x y in
-    eprint e;
+    (*eprint e;*)
     read e
     
 end
