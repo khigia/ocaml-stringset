@@ -86,25 +86,25 @@ module LineDiff = struct
   
   end
   
-  let rec read_lines tagger ch acc =
+  let rec _read_lines norm tagger ch acc =
     try
-      let line = input_line ch in
-      (* TODO line transfo happen now ... normalize space etc *)
+      let raw = input_line ch in
+      let line = norm raw in
       let tag, tagger = Tagger.get_tag tagger line in
-      read_lines tagger ch (tag::acc)
+      _read_lines norm tagger ch (tag::acc)
     with End_of_file -> tagger, List.rev acc
   
-  let file_lines_to_sequence tagger fn =
+  let file_lines_to_sequence norm tagger fn =
     let ch = open_in fn in
-    let tagger, lines = read_lines tagger ch [] in
+    let tagger, lines = _read_lines norm tagger ch [] in
     close_in ch;
     tagger, Array.of_list lines
   
-  let diff fn0 files =
+  let diff fn0 files norm =
     let tagger = Tagger.create () in
-    let tagger, a0 = file_lines_to_sequence tagger fn0 in
+    let tagger, a0 = file_lines_to_sequence norm tagger fn0 in
     List.iter (fun fn ->
-      let _, a = file_lines_to_sequence tagger fn in
+      let _, a = file_lines_to_sequence norm tagger fn in
       Printf.eprintf "Compare %s and %s\n" fn0 fn;
       let d = D.align a0 a in
       (*D.Edition.print stderr d (fun s -> string_of_int s);*)
@@ -131,9 +131,19 @@ type mode = Line
 let _ =
   let fns = ref [] in
   let mode = ref Line in
+  let subst = ref None in
   let _ = Arg.parse
     [
-      ("-l", Arg.Unit (fun () -> mode := Line), "Diff by line.");
+      ("-l", Arg.Unit (fun () -> mode := Line), "Diff by line (default).");
+      ("-subst", Arg.String (fun s ->
+        let re = Str.regexp "s?\\(.\\)\\([^/]+\\)\\1\\([^/]*\\)\\1$" in
+        if Str.string_match re s 0
+        then subst := Some (Str.matched_group 2 s, Str.matched_group 3 s)
+        else die (usage ()) 2
+      ), "Replacement regex (default to none; ex \"/ +/ /\").");
+      ("-spacenorm", Arg.Unit (fun () ->
+        subst := Some ("[ \t]+", " ")
+      ), "Space normalization (equiv. to -subst \"/[ \t]+/ /\").");
     ]
     (fun fn -> fns := (check_file fn) :: !fns)
     (usage ())
@@ -141,8 +151,15 @@ let _ =
   match List.rev !fns with
   | fn0::fn1::files ->
     begin
+    let norm = match !subst with
+    | None ->
+      (fun x -> x)
+    | Some (pat, rep) ->
+      let re = Str.regexp pat in
+      (fun x -> Str.global_replace re rep x)
+    in
     match !mode with
-    | Line -> LineDiff.diff fn0 (fn1::files)
+    | Line -> LineDiff.diff fn0 (fn1::files) norm
     end
   | _ -> die (usage ()) 1
 
