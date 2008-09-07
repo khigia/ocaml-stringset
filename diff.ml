@@ -33,6 +33,7 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
     type action =
       | Insert of int
       | Delete of int
+      | Ident of int
       | Replace of int * int
     
     type t = Edit of S.t * S.t * action list
@@ -42,12 +43,11 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
         List.iter (fun v -> match v with
           | Insert i -> Printf.fprintf ch "+ %s\n" (tostr (S.get a1 i))
           | Delete i -> Printf.fprintf ch "- %s\n" (tostr (S.get a2 i))
+          | Ident i -> Printf.fprintf ch "  %s\n" (tostr (S.get a1 i))
           | Replace (i, j) ->
             let c1 = S.get a1 i in
             let c2 = S.get a2 j in
-            if c1 = c2
-            then Printf.fprintf ch "  %s\n" (tostr c1)
-            else Printf.fprintf ch "-+%s\n+-%s\n" (tostr c2) (tostr c2)
+            Printf.fprintf ch "-+%s\n+-%s\n" (tostr c1) (tostr c2)
         ) d
   end
 
@@ -107,7 +107,9 @@ module Edit (S:Indexable) (C:Costs with type v = S.v) = struct
         then
           _read m s1 s2 (i-1) j ((Insert (i-1))::r)
         else
-          _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
+          if c1 = c2
+          then _read m s1 s2 (i-1) (j-1) ((Ident (i-1))::r)
+          else _read m s1 s2 (i-1) (j-1) ((Replace (i-1, j-1))::r)
 
   let read = function Mat(s1, s2, m) ->
     let l1 = S.length s1 in

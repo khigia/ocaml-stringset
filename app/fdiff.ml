@@ -45,10 +45,45 @@ module IntArray = Diff.MakeArray (struct type t = int end)
 module IntCosts = MakeCosts (struct type t = int end)
 module IntDiff = Diff.Edit (IntArray) (IntCosts)
 
-module StringArray = Diff.MakeArray (struct type t = string end)
-module StringCosts = MakeCosts (struct type t = string end)
-module StringDiff = Diff.Edit (StringArray) (StringCosts)
+module LineDiffPrinter = struct
+  module D = IntDiff
+  open D.Edition
 
+  let rec read_line_n ch pos n =
+    if n < pos then raise Not_found; (* should never happen. *)
+    let l = input_line ch in
+    let pos' = pos + 1 in
+    if n = pos then l,pos' else read_line_n ch pos' n
+
+  let rec _fprint ch ch1 p1 ch2 p2 edition =
+    match edition with
+    | [] -> ()
+    | hd::tl ->
+      match hd with
+      | Ident i ->
+        let l1, p1' = read_line_n ch1 p1 i in
+        Printf.fprintf ch "%5d= %s\n" i l1;
+        _fprint ch ch1 p1' ch2 p2 tl
+      | Insert i ->
+        let l1, p1' = read_line_n ch1 p1 i in
+        Printf.fprintf ch "%5d+ %s\n" i l1;
+        _fprint ch ch1 p1' ch2 p2 tl
+      | Delete j ->
+        let l2, p2' = read_line_n ch2 p2 j in
+        Printf.fprintf ch "%5d- %s\n" j l2;
+        _fprint ch ch1 p1 ch2 p2' tl
+      | Replace (i, j) ->
+        let l1, p1' = read_line_n ch1 p1 i in
+        let l2, p2' = read_line_n ch2 p2 j in
+        Printf.fprintf ch "%5d-*%s\n%5d+*%s\n" i l1 j l2;
+        _fprint ch ch1 p1' ch2 p2' tl
+
+  let fprint ch fn1 fn2 edition =
+    let ch1 = open_in fn1 in
+    let ch2 = open_in fn2 in
+    match edition with Edit(_,_,d) -> _fprint ch ch1 0 ch2 0 d
+
+end
 
 type lines = Lines of string * int array
 
@@ -63,6 +98,7 @@ let rec read_lines tagger ch acc =
 let file_lines_to_sequence tagger fn =
   let ch = open_in fn in
   let tagger, lines = read_lines tagger ch [] in
+  close_in ch;
   tagger, Lines(fn, Array.of_list lines)
 
 let rec _do_diff_line tagger s0 files =
@@ -73,7 +109,8 @@ let rec _do_diff_line tagger s0 files =
     let Lines(fn, a) = s in
     Printf.eprintf "Compare %s and %s\n" fn0 fn;
     let d = IntDiff.align a0 a in
-    IntDiff.Edition.print stderr d (fun s -> string_of_int s);
+    (*IntDiff.Edition.print stderr d (fun s -> string_of_int s);*)
+    LineDiffPrinter.fprint stderr fn0 fn d;
     _do_diff_line tagger s0 rest
   | _ -> ()
 
